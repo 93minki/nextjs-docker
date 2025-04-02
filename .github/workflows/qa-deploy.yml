@@ -19,6 +19,8 @@ jobs:
       - name: Extract Branch Info
         id: branch
         run: |
+          echo "head_ref=${GITHUB_HEAD_REF}"
+          echo "ref_name=${GITHUB_REF_NAME}"
           echo "head_ref=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
           echo "ref_name=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
 
