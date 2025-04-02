@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       versionType:
-        description: "Patch or Minor Update"
+        description: "Patch or Minor update?"
         required: true
         default: "patch"
         type: choice
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
@@ -48,8 +48,12 @@ jobs:
           git commit -m "🔁 Bump ${{ github.event.inputs.versionType }} version"
           git push
 
-          VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          MAJOR=$(jq -r '.major' version.json)
+          MINOR=$(jq -r '.minor' version.json)
+          PATCH=$(jq -r '.patch' version.json)
+          VERSION="$MAJOR.$MINOR.$PATCH"
+
+          echo "version=$VERSION" >> $GITHUB_ENV
           echo "📌 Extracted version: $VERSION"
 
       - name: Docker Login
@@ -60,14 +64,12 @@ jobs:
 
       - name: Build & Push QA Docker Image
         run: |
-          VERSION=${{ steps.version.outputs.version }}
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
-
-          echo "📦 Building QA image: $IMAGE:qa-${VERSION}"
+          echo "📦 Building image: $IMAGE:qa-${version}"
 
           docker build -f Dockerfile \
-            -t $IMAGE:qa-${VERSION} \
+            -t $IMAGE:qa-${version} \
             -t $IMAGE:qa-latest .
 
-          docker push $IMAGE:qa-${VERSION}
+          docker push $IMAGE:qa-${version}
           docker push $IMAGE:qa-latest
