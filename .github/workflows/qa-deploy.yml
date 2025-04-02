@@ -25,11 +25,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Copy .env.development -> .env
-        run: |
-          cp .env.development .env
-
-      - name: Create .env.development
+      - name: Create .env
         run: |
           echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
           echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
