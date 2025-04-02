@@ -13,60 +13,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Pull Latest Changes
+      - name: Extract Branch Info
+        id: branch
         run: |
-          git pull --rebase origin qa
-
-      - name: Check if merge from main
-        id: check_merge
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "head_ref=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
+          echo "ref_name=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # 🎯 main → QA: Bump minor version
-      - name: Extract Minor Version
-        if: contains(steps.check_merge.outputs.msg, 'Merge') && contains(steps.check_merge.outputs.msg, 'main')
-        id: version_minor
-        run: |
-          MAJOR=$(jq -r '.major')
-          MINOR=$(( $(jq -r '.minor') + 1 ))
-          VERSION="$MAJOR.$MINOR.0"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Update Minor Version
-        if: contains(steps.check_merge.outputs.msg, 'Merge') && contains(steps.check_merge.outputs.msg, 'main')
+      # ✅ main → qa 머지일 경우 마이너 버전 증가
+      - name: Bump minor version
+        if: ${{ steps.branch.outputs.ref_name == 'qa' && steps.branch.outputs.head_ref == 'main' }}
         run: |
           jq '.minor += 1 | .patch = 0' version.json > version.tmp.json
           mv version.tmp.json version.json
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add version.json
-          git commit -m "🔁 Bump minor version to ${{ steps.version_minor.outputs.version }}"
+          git commit -m "🔁 Bump minor version"
           git push
 
-      # 🛠️ QA 내부 fix: Bump patch version
-      - name: Extract Patch Version
-        if: ${{ !contains(steps.check_merge.outputs.msg, 'Merge') || !contains(steps.check_merge.outputs.msg, 'main') }}
-        id: version_patch
-        run: |
-          MAJOR=$(jq -r '.major')
-          MINOR=$(jq -r '.minor')
-          PATCH=$(( $(jq -r '.patch') + 1 ))
-          VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Update Patch Version
-        if: ${{ !contains(steps.check_merge.outputs.msg, 'Merge') || !contains(steps.check_merge.outputs.msg, 'main') }}
+      # ✅ 그 외 (qa 자체 커밋) → 패치 버전 증가
+      - name: Bump patch version
+        if: ${{ !(steps.branch.outputs.ref_name == 'qa' && steps.branch.outputs.head_ref == 'main') }}
         run: |
           jq '.patch += 1' version.json > version.tmp.json
           mv version.tmp.json version.json
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add version.json
-          git commit -m "🔁 Bump patch version to ${{ steps.version_patch.outputs.version }}"
+          git commit -m "🔁 Bump patch version"
           git push
 
       - name: Docker Login
@@ -77,9 +54,10 @@ jobs:
 
       - name: Build & Push QA Image
         run: |
-          VERSION=${{ steps.version_minor.outputs.version || steps.version_patch.outputs.version }}
+          VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
-          docker build -f Dockerfile --build-arg ENV_MODE=development \
+          docker build -f Dockerfile \
+            --build-arg ENV_MODE=development \
             -t $IMAGE:qa-${VERSION} \
             -t $IMAGE:qa-latest .
           docker push $IMAGE:qa-${VERSION}
