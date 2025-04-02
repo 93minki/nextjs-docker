@@ -1,9 +1,15 @@
-name: QA Deploy
+name: QA Deploy (Manual)
 
 on:
-  push:
-    branches:
-      - qa
+  workflow_dispatch:
+    inputs:
+      versionType:
+        description: "Patch or Minor Update"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
 
 permissions:
   contents: write
@@ -16,14 +22,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Extract Branch Info
-        id: branch
-        run: |
-          echo "head_ref=${GITHUB_HEAD_REF}"
-          echo "ref_name=${GITHUB_REF_NAME}"
-          echo "head_ref=${GITHUB_HEAD_REF}" >> $GITHUB_OUTPUT
-          echo "ref_name=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -32,28 +30,18 @@ jobs:
           echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
           echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
 
-      # ✅ main → qa 머지일 경우 마이너 버전 증가
-      - name: Bump minor version
-        if: ${{ steps.branch.outputs.ref_name == 'qa' && steps.branch.outputs.head_ref == 'main' }}
+      - name: Update Version
         run: |
-          jq '.minor += 1 | .patch = 0' version.json > version.tmp.json
+          if [[ "${{ github.event.inputs.versionType }}" == "minor" ]]; then
+            jq '.minor += 1 | .patch = 0' version.json > version.tmp.json
+          else
+            jq '.patch += 1' version.json > version.tmp.json
+          fi
           mv version.tmp.json version.json
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add version.json
-          git commit -m "🔁 Bump minor version"
-          git push
-
-      # ✅ 그 외 (qa 자체 커밋) → 패치 버전 증가
-      - name: Bump patch version
-        if: ${{ !(steps.branch.outputs.ref_name == 'qa' && steps.branch.outputs.head_ref == 'main') }}
-        run: |
-          jq '.patch += 1' version.json > version.tmp.json
-          mv version.tmp.json version.json
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add version.json
-          git commit -m "🔁 Bump patch version"
+          git commit -m "🔁 Bump ${{ github.event.inputs.versionType }} version"
           git push
 
       - name: Docker Login
@@ -62,12 +50,16 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Build & Push QA Image
+      - name: Build & Push QA Docker Image
         run: |
           VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
+
+          echo "📦 Building QA image: $IMAGE:qa-${VERSION}"
+
           docker build -f Dockerfile \
             -t $IMAGE:qa-${VERSION} \
             -t $IMAGE:qa-latest .
+
           docker push $IMAGE:qa-${VERSION}
           docker push $IMAGE:qa-latest
