@@ -1,0 +1,29 @@
+# Dependency directories
+node_modules
+.pnpm
+.yarn
+
+# Yarn Plug'n'Play & other internal cache
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+.yarnrc
+.yarnrc.yml
+
+# Next.js build output
+.next
+.turbo
+dist
+
+# Logs & temp
+*.log
+*.tsbuildinfo
+
+# System files
+.DS_Store
+.vscode/
+
+# Env files — 기본적으로 다 무시, 필요한 건 명시적으로 포함
+.env*
+!.env.development
+!.env.production
