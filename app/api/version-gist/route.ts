@@ -17,6 +17,8 @@ export async function GET() {
     );
   }
 
+  console.log("hello");
+
   const response = await fetch(gist_url, {
     headers: {
       Authorization: `Bearer ${token}`,
