@@ -6,6 +6,7 @@ on:
       versionType:
         description: "Patch or Minor Update"
         required: true
+        default: "patch"
         type: choice
         options:
           - patch
@@ -25,24 +26,31 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Create .env
+      - name: Create .env file
         run: |
           echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
           echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
 
-      - name: Update Version
+      - name: Bump version and extract
+        id: version
         run: |
           if [[ "${{ github.event.inputs.versionType }}" == "minor" ]]; then
             jq '.minor += 1 | .patch = 0' version.json > version.tmp.json
           else
             jq '.patch += 1' version.json > version.tmp.json
           fi
+
           mv version.tmp.json version.json
+
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add version.json
           git commit -m "🔁 Bump ${{ github.event.inputs.versionType }} version"
           git push
+
+          VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📌 Extracted version: $VERSION"
 
       - name: Docker Login
         uses: docker/login-action@v2
@@ -50,13 +58,9 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Debug VERSION
-        run: |
-          echo "Extracted version: $VERSION"
-
       - name: Build & Push QA Docker Image
         run: |
-          VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
+          VERSION=${{ steps.version.outputs.version }}
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
 
           echo "📦 Building QA image: $IMAGE:qa-${VERSION}"
