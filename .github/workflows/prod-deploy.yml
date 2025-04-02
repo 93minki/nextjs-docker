@@ -21,9 +21,17 @@ jobs:
         run: |
           BRANCH_NAME=$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}") 
           echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+      - name: Copy .env.production -> .env
+        run: |
+          cp .env.production .env
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+
+      - name: Create .env.production
+        run: |
+          echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
+          echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
 
       # 🎯 HOTFIX → PROD
       - name: Extract Hotfix Version
@@ -58,9 +66,7 @@ jobs:
           echo "📦 Building image with version: $VERSION"
 
           docker build -f Dockerfile \
-            --build-arg ENV_MODE=production \
-            -t $IMAGE:prod-$VERSION \
+            -t $IMAGE:prod-${VERSION} \
             -t $IMAGE:prod-latest .
-
-          docker push $IMAGE:prod-$VERSION
+          docker push $IMAGE:prod-${VERSION}
           docker push $IMAGE:prod-latest

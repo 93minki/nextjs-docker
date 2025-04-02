@@ -25,10 +25,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Copy .env.development -> .env
+        run: |
+          cp .env.development .env
+
       - name: Create .env.development
         run: |
-          echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env.development
-          echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env.development
+          echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
+          echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
 
       # ✅ main → qa 머지일 경우 마이너 버전 증가
       - name: Bump minor version
@@ -65,7 +69,6 @@ jobs:
           VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
           docker build -f Dockerfile \
-            --build-arg ENV_MODE=development \
             -t $IMAGE:qa-${VERSION} \
             -t $IMAGE:qa-latest .
           docker push $IMAGE:qa-${VERSION}
