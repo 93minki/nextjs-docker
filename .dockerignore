@@ -25,5 +25,4 @@ dist
 
 # Env files — 기본적으로 다 무시, 필요한 건 명시적으로 포함
 .env*
-!.env.development
-!.env.production
+!.env
