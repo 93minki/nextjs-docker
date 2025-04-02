@@ -1,0 +1,11 @@
+services:
+  app:
+    image: 93minki/nextjs-docker:prod-latest
+    container_name: nextjs-app-prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    volumes:
+      - ./outer-data/outer-version.json:/app/outer-version.json

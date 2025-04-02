@@ -1,0 +1,75 @@
+name: QA Deploy (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionType:
+        description: "Patch or Minor update?"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Create .env file
+        run: |
+          echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
+          echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
+
+      - name: Bump version and extract
+        id: version
+        run: |
+          if [[ "${{ github.event.inputs.versionType }}" == "minor" ]]; then
+            jq '.minor += 1 | .patch = 0' version.json > version.tmp.json
+          else
+            jq '.patch += 1' version.json > version.tmp.json
+          fi
+
+          mv version.tmp.json version.json
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add version.json
+          git commit -m "🔁 Bump ${{ github.event.inputs.versionType }} version"
+          git push
+
+          MAJOR=$(jq -r '.major' version.json)
+          MINOR=$(jq -r '.minor' version.json)
+          PATCH=$(jq -r '.patch' version.json)
+          VERSION="$MAJOR.$MINOR.$PATCH"
+
+          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "📌 Extracted version: $VERSION"
+
+      - name: Docker Login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build & Push QA Docker Image
+        run: |
+          IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
+          echo "📦 Building image: $IMAGE:qa-${version}"
+
+          docker build -f Dockerfile \
+            -t $IMAGE:qa-${version} \
+            -t $IMAGE:qa-latest .
+
+          docker push $IMAGE:qa-${version}
+          docker push $IMAGE:qa-latest
