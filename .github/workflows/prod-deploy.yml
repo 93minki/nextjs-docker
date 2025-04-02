@@ -16,38 +16,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Extract Branch Name
-        id: branch
-        run: |
-          BRANCH_NAME=$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}") 
-          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Create .env
+      - name: Create .env file
         run: |
           echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
           echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
+
+      - name: Extract Branch Name
+        id: branch
+        run: |
+          BRANCH_NAME=$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "📌 Current branch: $BRANCH_NAME"
 
       # 🎯 HOTFIX → PROD
       - name: Extract Hotfix Version
         if: ${{ startsWith(steps.branch.outputs.branch, 'hotfix/') }}
         id: hotfix_version
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0)
+          git fetch --tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 || echo "v0.0.0")
           IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST_TAG#v}"
           PATCH=$((PATCH + 1))
           VERSION="$MAJOR.$MINOR.$PATCH"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📌 HOTFIX version: $VERSION"
 
       # 🚀 QA → PROD
       - name: Extract QA Version
         if: ${{ !startsWith(steps.branch.outputs.branch, 'hotfix/') }}
         id: qa_version
         run: |
-          VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
+          MAJOR=$(jq -r '.major' version.json)
+          MINOR=$(jq -r '.minor' version.json)
+          PATCH=$(jq -r '.patch' version.json)
+          VERSION="$MAJOR.$MINOR.$PATCH"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📌 QA version: $VERSION"
 
       - name: Docker Login
         uses: docker/login-action@v2
@@ -57,13 +64,14 @@ jobs:
 
       - name: Build & Push PROD Image
         run: |
+          VERSION="${{ steps.hotfix_version.outputs.version || steps.qa_version.outputs.version }}"
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
-          VERSION=${{ steps.hotfix_version.outputs.version || steps.qa_version.outputs.version }}
 
-          echo "📦 Building image with version: $VERSION"
+          echo "📦 Building PROD image: $IMAGE:prod-${VERSION}"
 
           docker build -f Dockerfile \
             -t $IMAGE:prod-${VERSION} \
             -t $IMAGE:prod-latest .
+
           docker push $IMAGE:prod-${VERSION}
           docker push $IMAGE:prod-latest
