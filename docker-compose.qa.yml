@@ -1,0 +1,11 @@
+services:
+  app:
+    image: 93minki/nextjs-docker:qa-latest
+    container_name: nextjs-app-qa
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./outer-data/outer-version.json:/app/outer-version.json
