@@ -10,14 +10,13 @@ RUN yarn install --frozen-lockfile
 # builder
 FROM node:18-alpine AS builder
 
-ARG ENV_MODE=production
-ENV NODE_ENV=$ENV_MODE
+ENV NODE_ENV=production
 
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-COPY .env.$ENV_MODE .env
+COPY .env .env
 
 RUN yarn build 
 
