@@ -50,6 +50,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
+      - name: Debug VERSION
+        run: |
+          echo "Extracted version: $VERSION"
+
       - name: Build & Push QA Docker Image
         run: |
           VERSION=$(jq -r '.major').$(jq -r '.minor').$(jq -r '.patch')
