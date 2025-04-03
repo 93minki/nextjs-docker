@@ -18,6 +18,7 @@ export async function GET() {
   }
 
   console.log("hello");
+  console.log("hell12e21dsaddsaso");
   console.log("hellasdsadsao");
   console.log("hello");
   console.log("hellodwdwdw");
