@@ -69,7 +69,7 @@ jobs:
 
       - name: Build & Push PROD Image
         run: |
-          VERSION="${{ steps.hotfix_version.outputs.version || steps.release_version.outputs.version }}"
+          VERSION="${{ steps.version.outputs.version }}"
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
 
           echo "📦 Building PROD image: $IMAGE:prod-${VERSION}"
