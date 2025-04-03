@@ -31,38 +31,33 @@ jobs:
           echo "GIST_TOKEN=${{ secrets.GIST_TOKEN }}" >> .env
           echo "GIST_URL=${{ secrets.GIST_URL }}" >> .env
 
-      # 🔧 HOTFIX인 경우 → patch +1
-      - name: Bump Patch Version
-        if: ${{ github.event.inputs.deployType == 'hotfix' }}
-        id: hotfix_version
+      - name: Determine PROD version
+        id: version
         run: |
-          jq '.patch += 1' version.json > version.tmp.json
-          mv version.tmp.json version.json
+          if [[ "${{ github.event.inputs.deployType }}" == "hotfix" ]]; then
+            LATEST=$(git tag --list "v*" --sort=-v:refname | head -n 1)
+            echo "Latest tag: $LATEST"
 
+            if [[ "$LATEST" == "" ]]; then
+              VERSION="1.0.1"
+            else
+              IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+              PATCH=$((PATCH + 1))
+              VERSION="$MAJOR.$MINOR.$PATCH"
+            fi
+          else
+            LATEST_QA=$(git tag --list "qa-v*" --sort=-v:refname | head -n 1)
+            VERSION="${LATEST_QA#qa-v}"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Git Tag (vX.X.X)
+        run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add version.json
-          git commit -m "🔁 Bump patch version (hotfix)"
-          git push
-
-          MAJOR=$(jq -r '.major' version.json)
-          MINOR=$(jq -r '.minor' version.json)
-          PATCH=$(jq -r '.patch' version.json)
-          VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📌 New HOTFIX version: $VERSION"
-
-      # 🚀 release인 경우 → QA 버전 그대로
-      - name: Use QA Version
-        if: ${{ github.event.inputs.deployType == 'release' }}
-        id: release_version
-        run: |
-          MAJOR=$(jq -r '.major' version.json)
-          MINOR=$(jq -r '.minor' version.json)
-          PATCH=$(jq -r '.patch' version.json)
-          VERSION="$MAJOR.$MINOR.$PATCH"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📌 Release version: $VERSION"
+          git tag v${{ steps.version.outputs.version }}
+          git push origin v${{ steps.version.outputs.version }}
 
       - name: Docker Login
         uses: docker/login-action@v2
