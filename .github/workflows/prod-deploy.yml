@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   deploy:
+    if: github.ref_name == 'prod'
     runs-on: ubuntu-latest
 
     steps:
