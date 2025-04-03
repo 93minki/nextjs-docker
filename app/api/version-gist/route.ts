@@ -18,6 +18,8 @@ export async function GET() {
   }
 
   console.log("hello");
+  console.log("hellasdsadsao");
+  console.log("hello");
   console.log("hellodwdwdw");
 
   const response = await fetch(gist_url, {
