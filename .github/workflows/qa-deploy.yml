@@ -17,7 +17,6 @@ permissions:
 
 jobs:
   deploy:
-    if: github.ref_name == 'qa'
     runs-on: ubuntu-latest
 
     steps:
