@@ -17,7 +17,6 @@ permissions:
 
 jobs:
   deploy:
-    if: github.ref_name == 'qa'
     runs-on: ubuntu-latest
 
     steps:
@@ -35,6 +34,8 @@ jobs:
       - name: Calculate QA version
         id: version
         run: |
+          git fetch --tags
+
           LATEST=$(git tag --list "qa-v*" --sort=-v:refname | head -n 1)
           echo "Latest tag: $LATEST"
 
@@ -68,12 +69,13 @@ jobs:
 
       - name: Build & Push QA Docker Image
         run: |
+          VERSION=${{ steps.version.outputs.version }}
           IMAGE=${{ secrets.DOCKER_USERNAME }}/nextjs-app
-          echo "📦 Building image: $IMAGE:qa-${version}"
+          echo "📦 Building image: $IMAGE:qa-${VERSION}"
 
           docker build -f Dockerfile \
-            -t $IMAGE:qa-${version} \
+            -t $IMAGE:qa-${VERSION} \
             -t $IMAGE:qa-latest .
 
-          docker push $IMAGE:qa-${version}
+          docker push $IMAGE:qa-${VERSION}
           docker push $IMAGE:qa-latest

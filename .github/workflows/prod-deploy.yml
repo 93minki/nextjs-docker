@@ -17,7 +17,6 @@ permissions:
 
 jobs:
   deploy:
-    if: github.ref_name == 'prod'
     runs-on: ubuntu-latest
 
     steps:
@@ -35,6 +34,8 @@ jobs:
       - name: Determine PROD version
         id: version
         run: |
+          git fetch --tags
+
           if [[ "${{ github.event.inputs.deployType }}" == "hotfix" ]]; then
             LATEST=$(git tag --list "v*" --sort=-v:refname | head -n 1)
             echo "Latest tag: $LATEST"
