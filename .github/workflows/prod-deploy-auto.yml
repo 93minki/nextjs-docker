@@ -44,36 +44,37 @@ jobs:
             exit 1
           fi
 
-      - name: Determine PROD version
-        id: version
-        run: |
-          git fetch --tags
+          - name: Determine PROD version
+          id: version
+          run: |
+            git fetch --tags
 
-          if [[ "$deploy_type" == "release" ]]; then
-            LATEST=$(git tag --list "qa-v*" --sort=-v:refname | head -n 1)
-            echo "Latest QA tag: $LATEST"
+            if [[ "$deploy_type" == "release" ]]; then
+              LATEST=$(git tag --list "qa-v*" --sort=-v:refname | head -n 1)
+              echo "Latest QA tag: $LATEST"
 
-            if [[ "$LATEST" == "" ]]; then
-              VERSION="1.0.0"
-            else
-              VERSION="${LATEST#qa-}" 
+              if [[ "$LATEST" == "" ]]; then
+                VERSION="1.0.0"
+              else
+                VERSION="${LATEST#qa-v}"   # qa- 제거 → v1.17.0
+                VERSION="${VERSION#v}"     # v 제거 → 1.17.0
+              fi
+
+            elif [[ "$deploy_type" == "hotfix" ]]; then
+              LATEST=$(git tag --list "v*" --sort=-v:refname | head -n 1)
+              echo "Latest PROD tag: $LATEST"
+
+              if [[ "$LATEST" == "" ]]; then
+                VERSION="1.0.0"
+              else
+                IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+                PATCH=$((PATCH + 1))
+                VERSION="$MAJOR.$MINOR.$PATCH"
+              fi
             fi
 
-          elif [[ "$deploy_type" == "hotfix" ]]; then
-            LATEST=$(git tag --list "v*" --sort=-v:refname | head -n 1)
-            echo "Latest PROD tag: $LATEST"
-
-            if [[ "$LATEST" == "" ]]; then
-              VERSION="1.0.0"
-            else
-              IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
-              PATCH=$((PATCH + 1))
-              VERSION="$MAJOR.$MINOR.$PATCH"
-            fi
-          fi
-
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📌 Final version to tag: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "📌 Final version to tag: $VERSION"
 
       - name: Create Git Tag (vX.X.X)
         run: |
