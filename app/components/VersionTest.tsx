@@ -50,6 +50,7 @@ export const VersionTest = () => {
           </li>
         ))}
       </ul>
+      <h2>업데이트</h2>
     </div>
   );
 };
