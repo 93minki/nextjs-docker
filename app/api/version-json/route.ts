@@ -6,6 +6,9 @@ export async function GET() {
   const filePath = path.join(process.cwd(), "outer-version.json");
   try {
     console.log("bye!");
+    console.log("bye!");
+    console.log("bye!");
+    console.log("bye!");
     const data = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(data);
     console.log("bye!");
