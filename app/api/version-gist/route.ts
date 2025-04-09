@@ -18,9 +18,6 @@ export async function GET() {
   }
 
   console.log("hello");
-  console.log("2qdwd");
-  console.log("hellasdsadsao");
-  console.log("34234");
 
   const response = await fetch(gist_url, {
     headers: {
