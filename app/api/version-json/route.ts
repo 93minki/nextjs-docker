@@ -16,6 +16,10 @@ export async function GET() {
     console.log("bye!");
     return NextResponse.json(parsed);
   } catch (error) {
+    console.log("bye!");
+    console.log("bye!");
+    console.log("bye!");
+    console.log("bye!");
     return NextResponse.json(
       { error: `${error} Version file not found or invalid` },
       { status: 500 }
