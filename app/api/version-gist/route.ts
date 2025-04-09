@@ -16,11 +16,8 @@ export async function GET() {
       { status: 500 }
     );
   }
-  console.log("ffsdfkljfsdjlsdfjkl");
-  console.log("ffsdfkljfsdjlsdfjkl");
-  console.log("ffsdfkljfsdjlsdfjkl");
-  console.log("fdsaddfsd");
-  console.log("ffsdfkljfsdjlsdfjkl");
+
+  console.log("hello");
 
   const response = await fetch(gist_url, {
     headers: {
