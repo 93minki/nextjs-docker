@@ -1,0 +1,63 @@
+name: PROD Version Update
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+
+jobs:
+  update-prod-version:
+    if: github.event.label.name == 'version-update:prod' && github.base_ref == 'prod'
+    name: version-update-prod-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+      - name: Calculate next PROD version
+        id: version
+        run: |
+          # QA 버전 파싱
+          QA_VERSION=$(jq -r '.qa' version.json | sed 's/qa-v//')
+
+          # PROD 버전 파싱
+          PROD_RAW=$(jq -r '.prod' version.json | sed -E 's/v([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          MAJOR=$(echo "$PROD_RAW" | cut -d. -f1)
+          MINOR=$(echo "$PROD_RAW" | cut -d. -f2)
+          PATCH=$(echo "$PROD_RAW" | cut -d. -f3)
+
+          # 브랜치명으로 버전 증가 타입 판별
+          HEAD_BRANCH="${{ github.head_ref }}"
+          if [[ "$HEAD_BRANCH" == "qa" ]]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [[ "$HEAD_BRANCH" =~ ^hotfix/.*$ ]]; then
+            PATCH=$((PATCH + 1))
+          else
+            echo "❌ 예상하지 못한 브랜치명: $HEAD_BRANCH"
+            exit 1
+          fi
+
+          NEW_VERSION="v$MAJOR.$MINOR.$PATCH-qa_$QA_VERSION"
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+          jq --arg v "$NEW_VERSION" '.prod = $v' version.json > tmp && mv tmp version.json
+
+      - name: Commit and push version update
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git remote set-url origin https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git
+          git add version.json
+          git commit -m "ci: update PROD version to ${{ steps.version.outputs.new_version }}"
+          git push origin ${{ github.head_ref }}
