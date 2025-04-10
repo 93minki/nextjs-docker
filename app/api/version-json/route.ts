@@ -11,6 +11,9 @@ export async function GET() {
     console.log("bye!");
     const data = fs.readFileSync(filePath, "utf-8");
     const parsed = JSON.parse(data);
+    console.log("bye!");
+    console.log("bye!");
+    console.log("bye!");
     return NextResponse.json(parsed);
   } catch (error) {
     console.log("bye!");
